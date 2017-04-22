@@ -417,8 +417,7 @@ class HeatCapacity(object):
             None
 
         """
-        (m, hc) = update_args.amodel.heat_capacity(seed=None, init_lr=0.01, tol=1e-4, max_iters=20)
-        self.heat_capacity += hc
+        self.heat_capacity += update_args.amodel.heat_capacity(seed=None, init_lr=0.01, tol=1e-4, max_iters=20)
 
     def value(self) -> float:
         """

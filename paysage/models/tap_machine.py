@@ -434,7 +434,7 @@ class TAP_rbm(model.Model):
                     m = m_provisional
                     gam = gam_provisional
 
-            return (m, gam)
+            return gam
 
         # generate random sample in domain to use as a starting location for gradient descent
         if seed==None :
@@ -445,5 +445,4 @@ class TAP_rbm(model.Model):
                 0.99 * be.float_tensor(be.rand((num_hidden_units,))) + 0.005
             )
 
-        # minus sign here because the heat capacity is the second derivative of lnZ wrt \beta.
         return -minimize_GD(w, a, b, seed, init_lr, tol, max_iters)
