@@ -364,16 +364,17 @@ class EnergyZscore(object):
 
 class HeatCapacity(object):
     """
-    Compute the heat capacity of the system thought of as a spin system
+    Compute the heat capacity of the system thought of as a spin system.
 
     We take the HC to be the second cumulant of the energy, or alternately
-    the second derivative with respect to inverse temperature of the Gibbs free energy
+    the negative second derivative with respect to inverse temperature of
+    the Gibbs free energy.
 
     """
 
     name = 'HeatCapacity'
 
-    def __init__(self, downsample=100):
+    def __init__(self):
         """
         Create HeatCapacity object.
 
@@ -385,7 +386,7 @@ class HeatCapacity(object):
 
         """
         self.heat_capacity = 0
-        self.downsample = 100
+        self.norm = 0
 
     def reset(self) -> None:
         """
@@ -402,10 +403,11 @@ class HeatCapacity(object):
 
         """
         self.heat_capacity = 0
+        self.norm = 0
 
     def update(self, update_args: MetricState) -> None:
         """
-        Update the estimate for the heat capacity using the third order TAP expansion
+        Update the estimate for the heat capacity using the third order TAP expansion.
 
         Notes:
             Changes heat capacity in place.
@@ -417,7 +419,8 @@ class HeatCapacity(object):
             None
 
         """
-        self.heat_capacity += update_args.amodel.heat_capacity(seed=None, init_lr=0.01, tol=1e-4, max_iters=20)
+        self.norm += 1
+        self.heat_capacity += update_args.amodel.heat_capacity(seed=None, init_lr=0.05, tol=1e-1, max_iters=20)
 
     def value(self) -> float:
         """
@@ -430,4 +433,7 @@ class HeatCapacity(object):
             heat capacity (float)
 
         """
-        return self.heat_capacity
+        if self.norm:
+            return self.heat_capacity / self.norm
+        else:
+            return None

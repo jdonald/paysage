@@ -412,6 +412,7 @@ class TAP_rbm(model.Model):
             its = 0
             lr = init_lr
             gam = self.grad_beta_beta_TAP3(m)
+            #print(its)
             #print(gam)
 
             while (its < max_iters):
@@ -423,6 +424,7 @@ class TAP_rbm(model.Model):
                 be.clip_inplace(m_provisional.h, eps, 1.0-eps)
 
                 gam_provisional = self.grad_beta_beta_TAP3(m_provisional)
+                #print(its)
                 #print(gam_provisional)
                 if (gam - gam_provisional < 0):
                     lr *= 0.5
