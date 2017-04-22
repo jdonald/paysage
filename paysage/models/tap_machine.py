@@ -364,3 +364,86 @@ class TAP_rbm(model.Model):
         #score = be.accumulate(self.marginal_free_energy, vdata)
         #print(-score / batch_size + EMF)
         return grad
+
+    def grad_beta_beta_TAP3(self, m):
+        w = self.weights[0].params[0]
+        a = self.layers[0].params[0]
+        b = self.layers[1].params[0]
+        m_v_quad = m.v - be.square(m.v)
+        m_h_quad = m.h - be.square(m.h)
+        www = be.multiply(be.square(w),w)
+        alias1 = be.unsqueeze(be.multiply(0.5 - m.v, m_v_quad),1)
+        alias2 = be.unsqueeze(be.multiply(0.5 - m.h, m_h_quad),0)
+        return \
+            2*(be.tsum(be.multiply(m.v, be.log(m.v)) + be.multiply(1.0 - m.v, be.log(1.0 - m.v))) + \
+               be.tsum(be.multiply(m.h, be.log(m.h)) + be.multiply(1.0 - m.h, be.log(1.0 - m.h))) - \
+               (4.0/3.0) * be.tsum(be.multiply(alias2, be.multiply(alias1, www))))
+
+    def heat_capacity(self, seed=None, init_lr=0.1, tol=1e-4, max_iters=50):
+
+        w = self.weights[0].params.matrix
+        a = self.layers[0].params.loc
+        b = self.layers[1].params.loc
+
+        # Third order TAP expansion gradients
+        def grad_v(m, w, a):
+            m_h_quad = m.h - be.square(m.h)
+            ww = be.square(w)
+            www = be.multiply(ww,w)
+            return 2*(be.log(be.divide(1.0 - m.v, m.v)) - \
+                   (4.0/3.0)*be.multiply(0.5 - 3.0*m.v + 3.0*be.square(m.v),\
+                   be.dot(www,be.multiply(0.5 - m.h, m_h_quad))))
+        def grad_h(m, w, b):
+            m_v_quad = m.v - be.square(m.v)
+            ww = be.square(w)
+            www = be.multiply(ww,w)
+            return 2*(be.log(be.divide(1.0 - m.h, m.h)) - \
+                   (4.0/3.0)*be.multiply(be.dot(be.multiply(0.5 - m.v, m_v_quad),www),\
+                   0.5 - 3.0*m.h + 3.0*be.square(m.h)))
+
+        def minimize_GD(w, a, b, m, init_lr, tol, max_iters):
+            """
+            Simple gradient descent routine to minimize a function
+
+            Warning: this function modifies seed to avoid an extra copy and allocation
+
+            """
+            eps = 1e-6
+            its = 0
+            lr = init_lr
+            gam = self.grad_beta_beta_TAP3(m)
+            #print(gam)
+
+            while (its < max_iters):
+                its += 1
+                m_provisional = Magnetization(m.v - lr*grad_v(m, w, a),
+                                              m.h - lr*grad_h(m, w, b))
+                # Warning: in general a lot of clipping gets done here
+                be.clip_inplace(m_provisional.v, eps, 1.0-eps)
+                be.clip_inplace(m_provisional.h, eps, 1.0-eps)
+
+                gam_provisional = self.grad_beta_beta_TAP3(m_provisional)
+                #print(gam_provisional)
+                if (gam - gam_provisional < 0):
+                    lr *= 0.5
+                    if (lr < 1e-10):
+                        break
+                elif (gam - gam_provisional < tol):
+                    break
+                else:
+                    m = m_provisional
+                    gam = gam_provisional
+
+            return (m, gam)
+
+        # generate random sample in domain to use as a starting location for gradient descent
+        if seed==None :
+            num_visible_units = be.shape(a)[0]
+            num_hidden_units = be.shape(b)[0]
+            seed = Magnetization(
+                0.99 * be.float_tensor(be.rand((num_visible_units,))) + 0.005,
+                0.99 * be.float_tensor(be.rand((num_hidden_units,))) + 0.005
+            )
+
+        # minus sign here because the heat capacity is the second derivative of lnZ wrt \beta.
+        return -minimize_GD(w, a, b, seed, init_lr, tol, max_iters)

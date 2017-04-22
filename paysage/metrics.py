@@ -361,3 +361,74 @@ class EnergyZscore(object):
             return (self.data_mean - self.random_mean) / math.sqrt(self.random_mean_square)
         else:
             return None
+
+class HeatCapacity(object):
+    """
+    Compute the heat capacity of the system thought of as a spin system
+
+    We take the HC to be the second cumulant of the energy, or alternately
+    the second derivative with respect to inverse temperature of the Gibbs free energy
+
+    """
+
+    name = 'HeatCapacity'
+
+    def __init__(self, downsample=100):
+        """
+        Create HeatCapacity object.
+
+        Args:
+            downsample (int; optional): how many samples to use
+
+        Returns:
+            heat capacity object
+
+        """
+        self.heat_capacity = 0
+        self.downsample = 100
+
+    def reset(self) -> None:
+        """
+        Reset the metric to it's initial state.
+
+        Note:
+            Modifies the heat capacity in place.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        """
+        self.heat_capacity = 0
+
+    def update(self, update_args: MetricState) -> None:
+        """
+        Update the estimate for the heat capacity using the third order TAP expansion
+
+        Notes:
+            Changes heat capacity in place.
+
+        Args:
+            Just the model is used since this is not a stochastic metric
+
+        Returns:
+            None
+
+        """
+        (m, hc) = update_args.amodel.heat_capacity(seed=None, init_lr=0.01, tol=1e-4, max_iters=20)
+        self.heat_capacity += hc
+
+    def value(self) -> float:
+        """
+        Get the value of the heat capacity.
+
+        Args:
+            None
+
+        Returns:
+            heat capacity (float)
+
+        """
+        return self.heat_capacity
