@@ -177,6 +177,10 @@ class DrivenSequentialMC(Sampler):
         self.beta = None
         self.has_beta = False
 
+
+    #
+    # beta(t) = 1 - A sin(2 \pi t / T)
+    # where A is the amplitude and T is the period
     def _update_beta(self):
         """
         Update beta with an AR(1) process.

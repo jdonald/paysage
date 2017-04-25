@@ -1199,7 +1199,11 @@ def trange(start: int, end: int, step: int = 1) -> T.FloatTensor:
                 of step. Cast to float rather than int.
 
     """
-    return torch.range(start, end-1, step)
+    if not end % step:
+        new_end = end - step
+    else:
+        new_end = end
+    return torch.range(start, new_end, step)
 
 def euclidean_distance(a: T.FloatTensor, b: T.FloatTensor) -> float:
     """
